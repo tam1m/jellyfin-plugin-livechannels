@@ -483,18 +483,19 @@ public class StreamSessionService
 
         var subtitle = ChannelService.FindBurnInSubtitle(program, channel.SubtitleBurnIn);
 
-        // Burning a text subtitle uses the libass `subtitles` filter, which reads the media file from the start
-        // to reach the current position -- fatal on a deep tune-in seek into a multi-GB file (it scans gigabytes
-        // and the producer stalls). So on the partial tune-in item, burn a small pre-extracted subtitle file
-        // instead (Jellyfin extracts and caches it). If it is not cached yet, skip the burn for this one tune-in;
-        // it warms the cache for next time. Full items from offset 0 and bitmap subtitles are unaffected.
+        // Every text-subtitle burn-in routes through a pre-extracted, cleaned ASS file: it is the only
+        // path that strips HTML markup (e.g. <i>, <font>) that libass would otherwise render as literal
+        // text, and the only way to burn sidecar subtitles (which cannot be read via si=N against the
+        // media container). Jellyfin caches the extraction; if it is not ready on a cold tune-in, a
+        // full-item (offset 0) falls back to the direct-from-media path (uncleaned but still shows subtitles),
+        // while a deep tune-in skips burn-in entirely (the direct path would scan gigabytes and stall).
         string? subtitlePath = null;
-        if (subtitle.HasValue && subtitle.Value.IsText && offset > TimeSpan.Zero)
+        if (subtitle.HasValue && subtitle.Value.IsText)
         {
             subtitlePath = await _channels.TryExtractTuneInSubtitleAsync(program.ItemId, subtitle.Value.RelativeIndex, offset, _subtitleRoot, cancellationToken).ConfigureAwait(false);
-            if (subtitlePath is null)
+            if (subtitlePath is null && offset > TimeSpan.Zero)
             {
-                _logger.LogDebug("Channel {Name}: tune-in subtitle not ready; skipping it on this item", channel.Name);
+                _logger.LogDebug("Channel {Name}: burn-in subtitle not ready; skipping it on this item", channel.Name);
                 subtitle = null;
             }
         }

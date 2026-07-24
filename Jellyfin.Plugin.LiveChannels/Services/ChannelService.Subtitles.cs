@@ -3,9 +3,11 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.LiveChannels.Models;
+using Jellyfin.Plugin.LiveChannels.Utilities;
 using MediaBrowser.Model.Entities;
 using Microsoft.Extensions.Logging;
 
@@ -142,13 +144,24 @@ public partial class ChannelService
             var temp = path + "." + Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture) + ".tmp";
 
             var subtitleStream = await extract.ConfigureAwait(false);
-            var file = new FileStream(temp, FileMode.Create, FileAccess.Write);
             try
             {
+                // Read the extracted ASS into memory so HTML markup (e.g. <i>, <font>) that libass
+                // would render as literal text can be stripped before publishing the file.
+                string ass;
                 await using (subtitleStream.ConfigureAwait(false))
+                {
+                    using var reader = new StreamReader(subtitleStream, Encoding.UTF8);
+                    ass = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+                }
+
+                ass = SubtitleStyler.CleanAss(ass);
+
+                var file = new FileStream(temp, FileMode.Create, FileAccess.Write);
                 await using (file.ConfigureAwait(false))
                 {
-                    await subtitleStream.CopyToAsync(file, cancellationToken).ConfigureAwait(false);
+                    using var writer = new StreamWriter(file, Encoding.UTF8);
+                    await writer.WriteAsync(ass.AsMemory(), cancellationToken).ConfigureAwait(false);
                 }
 
                 // Publish atomically so a reader (libass) or a concurrent writer never sees a half-written ASS.
