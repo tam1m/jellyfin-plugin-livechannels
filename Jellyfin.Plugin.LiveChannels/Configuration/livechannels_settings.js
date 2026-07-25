@@ -19,6 +19,7 @@ export default function (view) {
     var _bound = false;
     var cultures = [];         // cached [{ key: ISO code, label: name }] for the language search
     var langSelect = null;     // searchable single-select for the default subtitle language
+    var currentAlign = 2;      // the selected subtitle alignment (1-9 numpad)
 
     function el(id) { return view.querySelector('#' + id); }
 
@@ -134,7 +135,38 @@ export default function (view) {
         el('disableHwa').checked = !!config.DisableHardwareAcceleration;
         ensureLangSelect();
         langSelect.setValue(config.DefaultSubtitleLanguage || 'eng');
+        loadSubtitleStyle(config.SubtitleStyle);
+        el('subSourcePref').value = config.SubtitleSourcePreference || 'Auto';
+        el('subLangPref').value = config.SubtitleLanguagePreference || '';
+        el('subPreferNonSdh').checked = !!config.PreferNonSdhSubtitles;
         renderAcceleration();
+    }
+
+    function loadSubtitleStyle(ss) {
+        ss = ss || {};
+        el('subEnable').checked = !!ss.Enabled;
+        el('subFont').value = ss.FontFamily || '';
+        el('subSize').value = ss.FontSizePercent || 4;
+        el('subSizeLabel').textContent = el('subSize').value;
+        el('subPrimary').value = ss.PrimaryColour || '#ffffff';
+        el('subOutline').value = ss.OutlineColour || '#000000';
+        el('subBold').checked = !!ss.Bold;
+        el('subItalic').checked = !!ss.Italic;
+        el('subMargin').value = ss.MarginVerticalPercent == null ? 6 : ss.MarginVerticalPercent;
+        el('subMarginLabel').textContent = el('subMargin').value;
+        selectAlign(ss.Alignment || 2);
+        toggleStyleControls();
+    }
+
+    function toggleStyleControls() {
+        el('subStyleControls').classList.toggle('hidden', !el('subEnable').checked);
+    }
+
+    function selectAlign(n) {
+        currentAlign = n;
+        view.querySelectorAll('#subAlign button').forEach(function (b) {
+            b.classList.toggle('selected', parseInt(b.dataset.align, 10) === n);
+        });
     }
 
     // Loads the server's known cultures once into a cache of { key: ISO code, label: name } for the language search.
@@ -173,6 +205,20 @@ export default function (view) {
             fresh.StreamDirectory = (el('streamDirectory').value || '').trim();
             fresh.DisableHardwareAcceleration = el('disableHwa').checked;
             fresh.DefaultSubtitleLanguage = (langSelect ? langSelect.getValue() : '') || 'eng';
+            fresh.SubtitleSourcePreference = el('subSourcePref').value;
+            fresh.SubtitleLanguagePreference = (el('subLangPref').value || '').trim();
+            fresh.PreferNonSdhSubtitles = el('subPreferNonSdh').checked;
+            fresh.SubtitleStyle = {
+                Enabled: el('subEnable').checked,
+                FontFamily: el('subFont').value,
+                FontSizePercent: parseInt(el('subSize').value, 10) || 4,
+                PrimaryColour: el('subPrimary').value,
+                OutlineColour: el('subOutline').value,
+                Bold: el('subBold').checked,
+                Italic: el('subItalic').checked,
+                Alignment: currentAlign,
+                MarginVerticalPercent: parseInt(el('subMargin').value, 10) || 6
+            };
             return Shared.saveConfig(fresh);
         }).then(function () {
             renderAcceleration();
@@ -355,6 +401,12 @@ export default function (view) {
         el('btnResetSchedule').addEventListener('click', resetSchedule);
         el('stressRun').addEventListener('click', stressRun);
         el('stressCancel').addEventListener('click', stressCancel);
+        el('subEnable').addEventListener('change', toggleStyleControls);
+        el('subSize').addEventListener('input', function () { el('subSizeLabel').textContent = this.value; });
+        el('subMargin').addEventListener('input', function () { el('subMarginLabel').textContent = this.value; });
+        view.querySelectorAll('#subAlign button').forEach(function (b) {
+            b.addEventListener('click', function () { selectAlign(parseInt(b.dataset.align, 10)); });
+        });
     }
 
     view.addEventListener('viewshow', function () {

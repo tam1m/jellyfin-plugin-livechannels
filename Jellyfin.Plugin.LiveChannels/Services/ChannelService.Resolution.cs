@@ -93,7 +93,10 @@ public partial class ChannelService
                 AbsoluteIndex = s.Index,
                 IsForced = s.IsForced,
                 IsDefault = s.IsDefault,
-                IsText = s.IsTextSubtitleStream
+                IsText = s.IsTextSubtitleStream,
+                IsExternal = s.IsExternal,
+                Language = s.Language ?? string.Empty,
+                IsHearingImpaired = s.IsHearingImpaired
             };
         }
 

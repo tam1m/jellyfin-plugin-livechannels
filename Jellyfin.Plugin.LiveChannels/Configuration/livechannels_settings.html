@@ -123,6 +123,95 @@
                         </div>
                     </div>
 
+                    <div class="jpk-collapsible-section">
+                        <button type="button" class="jpk-collapsible-header collapsed" aria-expanded="false" data-target="sectionSubtitles">
+                            <span class="jpk-collapsible-title">Subtitles</span>
+                            <span class="jpk-collapsible-icon">&#9660;</span>
+                        </button>
+                        <div id="sectionSubtitles" class="jpk-collapsible-content collapsed">
+                            <h3 class="jpk-subsection-title">Selection</h3>
+                            <div class="selectContainer">
+                                <label class="selectLabel" for="subSourcePref">Subtitle source</label>
+                                <select id="subSourcePref" class="jpk-selector-dropdown">
+                                    <option value="Auto">Auto</option>
+                                    <option value="PreferExternal">Prefer external (sidecar)</option>
+                                    <option value="PreferInternal">Prefer internal (embedded)</option>
+                                </select>
+                                <div class="fieldDescription">When both external and embedded subtitles exist, prefer one over the other. Auto picks by forced/default flags and index.</div>
+                            </div>
+                            <div class="inputContainer">
+                                <label for="subLangPref">Preferred subtitle languages</label>
+                                <input is="emby-input" type="text" id="subLangPref" autocomplete="off" placeholder="e.g. eng,deu,jpn" />
+                                <div class="fieldDescription">Comma-separated ISO 639-3 language codes (three-letter, e.g. eng, deu, jpn), highest priority first. A subtitle matching the first code wins over one matching the second, and so on. Empty means no language preference.</div>
+                            </div>
+                            <div class="selectContainer">
+                                <label class="emby-checkbox-label">
+                                    <input type="checkbox" is="emby-checkbox" id="subPreferNonSdh" />
+                                    <span class="checkboxLabel">Prefer non-SDH subtitles</span>
+                                </label>
+                                <div class="fieldDescription">Ranks regular subtitles above hearing-impaired (SDH) tracks when both are available in the same language.</div>
+                            </div>
+
+                            <h3 class="jpk-subsection-title">Appearance</h3>
+                            <div class="selectContainer">
+                                <label class="emby-checkbox-label">
+                                    <input type="checkbox" is="emby-checkbox" id="subEnable" />
+                                    <span class="checkboxLabel">Override subtitle styling</span>
+                                </label>
+                                <div class="fieldDescription">Forces one uniform look onto every burned-in subtitle, ignoring the source's own fonts, colours, positions, and inline styling. Off keeps each subtitle's original styling (HTML tags are still stripped).</div>
+                            </div>
+                            <div id="subStyleControls" class="hidden">
+                                <div class="selectContainer">
+                                    <label class="selectLabel" for="subFont">Font</label>
+                                    <select id="subFont" class="jpk-selector-dropdown">
+                                        <option value="">Default</option>
+                                        <option value="DejaVu Sans">DejaVu Sans</option>
+                                        <option value="Arial">Arial</option>
+                                        <option value="Helvetica">Helvetica</option>
+                                        <option value="Liberation Sans">Liberation Sans</option>
+                                    </select>
+                                    <div class="fieldDescription">The font must be installed on the server. Default uses the server's built-in libass font.</div>
+                                </div>
+                                <div class="inputContainer">
+                                    <label for="subSize">Font size: <span id="subSizeLabel">4</span>% of frame height</label>
+                                    <input type="range" id="subSize" min="2" max="10" step="1" value="4" />
+                                </div>
+                                <div class="inputContainer" style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">
+                                    <div>
+                                        <label for="subPrimary">Text colour</label><br />
+                                        <input type="color" id="subPrimary" value="#ffffff" style="width:60px;height:36px;border:none;padding:0;cursor:pointer" />
+                                    </div>
+                                    <div>
+                                        <label for="subOutline">Outline colour</label><br />
+                                        <input type="color" id="subOutline" value="#000000" style="width:60px;height:36px;border:none;padding:0;cursor:pointer" />
+                                    </div>
+                                    <div style="display:flex;gap:16px">
+                                        <label class="emby-checkbox-label"><input type="checkbox" is="emby-checkbox" id="subBold" /><span class="checkboxLabel">Bold</span></label>
+                                        <label class="emby-checkbox-label"><input type="checkbox" is="emby-checkbox" id="subItalic" /><span class="checkboxLabel">Italic</span></label>
+                                    </div>
+                                </div>
+                                <div class="selectContainer">
+                                    <label class="selectLabel">Position</label>
+                                    <div id="subAlign" class="jpk-align-grid">
+                                        <button type="button" data-align="7" title="Top left">&#x2196</button>
+                                        <button type="button" data-align="8" title="Top center">&#x2191</button>
+                                        <button type="button" data-align="9" title="Top right">&#x2197</button>
+                                        <button type="button" data-align="4" title="Middle left">&#x2190</button>
+                                        <button type="button" data-align="5" title="Center">&#x2022</button>
+                                        <button type="button" data-align="6" title="Middle right">&#x2192</button>
+                                        <button type="button" data-align="1" title="Bottom left">&#x2199</button>
+                                        <button type="button" data-align="2" class="selected" title="Bottom center">&#x2193</button>
+                                        <button type="button" data-align="3" title="Bottom right">&#x2198</button>
+                                    </div>
+                                </div>
+                                <div class="inputContainer">
+                                    <label for="subMargin">Margin from edge: <span id="subMarginLabel">6</span>% of frame height</label>
+                                    <input type="range" id="subMargin" min="0" max="20" step="1" value="6" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <button is="emby-button" type="button" id="btnSaveSettings" class="raised block jpk-button-submit">
                         <span>Save settings</span>
                     </button>
@@ -187,6 +276,15 @@
             background: rgba(255, 255, 255, 0.12); color: #fff; opacity: 1; font-size: 1em; line-height: 1;
         }
         .jpk-chip-select .jpk-tag-remove:hover { background: var(--jpk-red-fg); color: #fff; opacity: 1; }
+        .jpk-align-grid { display: grid; grid-template-columns: repeat(3, 44px); gap: 4px; }
+        .jpk-align-grid button {
+            display: flex; align-items: center; justify-content: center;
+            width: 44px; height: 36px; padding: 0;
+            border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;
+            background: transparent; color: inherit; cursor: pointer; font-size: 1.1em;
+        }
+        .jpk-align-grid button:hover { background: rgba(255,255,255,0.08); }
+        .jpk-align-grid button.selected { background: var(--jpk-blue-bg, #3498db); border-color: transparent; color: #fff; }
     </style>
 
     <link rel="stylesheet" href="configurationpage?name=livechannels_jpkribs_shared.css">

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using Jellyfin.Plugin.LiveChannels.Configuration;
 using Jellyfin.Plugin.LiveChannels.Models;
 
@@ -13,6 +14,8 @@ public static class ConfigurationValidator
 {
     /// <summary>The largest decoded logo size accepted (headroom over the dashboard's 2 MB cap).</summary>
     public const int MaxLogoBytes = 4 * 1024 * 1024;
+
+    private static readonly Regex HexColour = new(@"^#[0-9A-Fa-f]{6}$", RegexOptions.Compiled);
 
     /// <summary>
     /// Validates a configuration, throwing when it must not be persisted.
@@ -51,6 +54,8 @@ public static class ConfigurationValidator
                 throw new ArgumentException("Duplicate channel number: " + channel.Number);
             }
         }
+
+        ValidateSubtitleStyle(config);
     }
 
     // A custom rating-block window must sit within the day and cover a real span; an all-day block ignores its
@@ -83,6 +88,40 @@ public static class ConfigurationValidator
 
     private static string Describe(Channel channel)
         => string.IsNullOrWhiteSpace(channel.Name) ? "channel " + channel.Number : channel.Name;
+
+    private static void ValidateSubtitleStyle(PluginConfiguration config)
+    {
+        var s = config.SubtitleStyle;
+        if (s is null || !s.Enabled)
+        {
+            return;
+        }
+
+        if (s.FontSizePercent is < 2 or > 10)
+        {
+            throw new ArgumentException("Subtitle font size must be between 2 and 10.");
+        }
+
+        if (s.Alignment is < 1 or > 9)
+        {
+            throw new ArgumentException("Subtitle alignment must be between 1 and 9.");
+        }
+
+        if (s.MarginVerticalPercent is < 0 or > 20)
+        {
+            throw new ArgumentException("Subtitle vertical margin must be between 0 and 20.");
+        }
+
+        if (!HexColour.IsMatch(s.PrimaryColour))
+        {
+            throw new ArgumentException("Subtitle text colour must be #RRGGBB.");
+        }
+
+        if (!HexColour.IsMatch(s.OutlineColour))
+        {
+            throw new ArgumentException("Subtitle outline colour must be #RRGGBB.");
+        }
+    }
 
     private static void ValidateLogo(Channel channel)
     {
