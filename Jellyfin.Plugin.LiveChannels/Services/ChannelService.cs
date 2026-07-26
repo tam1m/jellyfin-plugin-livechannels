@@ -28,6 +28,7 @@ public partial class ChannelService
     private readonly ILibraryManager _libraryManager;
     private readonly IMediaSourceManager _mediaSourceManager;
     private readonly ISubtitleEncoder _subtitleEncoder;
+    private readonly IMediaEncoder _mediaEncoder;
     private readonly ILocalizationManager _localization;
     private readonly IUserManager _userManager;
     private readonly IUserDataManager _userDataManager;
@@ -47,17 +48,19 @@ public partial class ChannelService
     /// </summary>
     /// <param name="libraryManager">The library manager used to resolve items.</param>
     /// <param name="mediaSourceManager">The media source manager used to inspect subtitle streams.</param>
-    /// <param name="subtitleEncoder">The subtitle encoder used to extract (and cache) embedded subtitles for burn-in.</param>
+    /// <param name="subtitleEncoder">The subtitle encoder used to extract embedded subtitles via Jellyfin's cached extraction.</param>
+    /// <param name="mediaEncoder">The media encoder, used to locate ffmpeg for sidecar subtitle conversion.</param>
     /// <param name="localization">The localization manager used to rank official ratings.</param>
     /// <param name="userManager">The user manager, used to read server-wide watch data for the Popular channel.</param>
     /// <param name="userDataManager">The user-data manager, used to read per-item play counts for the Popular channel.</param>
-    /// <param name="appPaths">The application paths, used to locate the stream root the schedule cache lives in.</param>
+    /// <param name="appPaths">The application paths, used to locate the schedule cache directory.</param>
     /// <param name="logger">The logger.</param>
-    public ChannelService(ILibraryManager libraryManager, IMediaSourceManager mediaSourceManager, ISubtitleEncoder subtitleEncoder, ILocalizationManager localization, IUserManager userManager, IUserDataManager userDataManager, IApplicationPaths appPaths, ILogger<ChannelService> logger)
+    public ChannelService(ILibraryManager libraryManager, IMediaSourceManager mediaSourceManager, ISubtitleEncoder subtitleEncoder, IMediaEncoder mediaEncoder, ILocalizationManager localization, IUserManager userManager, IUserDataManager userDataManager, IApplicationPaths appPaths, ILogger<ChannelService> logger)
     {
         _libraryManager = libraryManager;
         _mediaSourceManager = mediaSourceManager;
         _subtitleEncoder = subtitleEncoder;
+        _mediaEncoder = mediaEncoder;
         _localization = localization;
         _userManager = userManager;
         _userDataManager = userDataManager;

@@ -43,7 +43,7 @@ public class PluginConfiguration : BasePluginConfiguration
     /// <summary>Gets or sets whether external (sidecar) or internal (embedded) subtitle streams are preferred when both are available. Soft preference — never filters content out.</summary>
     public SubtitleSourcePreference SubtitleSourcePreference { get; set; } = SubtitleSourcePreference.Auto;
 
-    /// <summary>Gets or sets a comma-separated list of preferred subtitle language codes (e.g. <c>eng,deu,jpn</c>), highest priority first. Empty means no language preference.</summary>
+    /// <summary>Gets or sets a comma-separated list of preferred subtitle language codes (e.g. <c>eng,de,jpn</c>), highest priority first. Empty means no language preference.</summary>
     public string SubtitleLanguagePreference { get; set; } = string.Empty;
 
     /// <summary>Gets or sets a value indicating whether regular subtitles are ranked above SDH (hearing-impaired) tracks when both are available in the same language. Off by default.</summary>

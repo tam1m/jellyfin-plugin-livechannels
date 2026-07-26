@@ -87,17 +87,17 @@ public partial class ChannelService
         for (var i = 0; i < subtitles.Count; i++)
         {
             var s = subtitles[i];
-            infos[i] = new SubtitleStreamInfo
-            {
-                RelativeIndex = i,
-                AbsoluteIndex = s.Index,
-                IsForced = s.IsForced,
-                IsDefault = s.IsDefault,
-                IsText = s.IsTextSubtitleStream,
-                IsExternal = s.IsExternal,
-                Language = s.Language ?? string.Empty,
-                IsHearingImpaired = s.IsHearingImpaired
-            };
+                infos[i] = new SubtitleStreamInfo
+                {
+                    RelativeIndex = i,
+                    AbsoluteIndex = s.Index,
+                    IsForced = s.IsForced,
+                    IsDefault = s.IsDefault,
+                    IsText = s.IsTextSubtitleStream,
+                    IsExternal = s.IsExternal,
+                    Language = s.Language ?? string.Empty,
+                    IsHearingImpaired = s.IsHearingImpaired
+                };
         }
 
         return infos;

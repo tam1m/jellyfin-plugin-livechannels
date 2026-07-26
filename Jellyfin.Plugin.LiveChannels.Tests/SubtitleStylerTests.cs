@@ -1,4 +1,5 @@
 using System;
+using Jellyfin.Plugin.LiveChannels.Models;
 using Jellyfin.Plugin.LiveChannels.Utilities;
 using Xunit;
 
@@ -236,4 +237,242 @@ public class SubtitleStylerTests
     [Fact]
     public void EmptyInput_ReturnsEmpty()
         => Assert.Equal(string.Empty, SubtitleStyler.CleanAss(string.Empty));
+
+    // --- StyleAss tests ---
+
+    /// <summary>A default enabled style used by most StyleAss tests.</summary>
+    private static SubtitleStyle Style() => new()
+    {
+        Enabled = true,
+        FontFamily = "DejaVu Sans",
+        FontSizePercent = 4,
+        PrimaryColour = "#FFFFFF",
+        OutlineColour = "#000000",
+        Alignment = 2,
+        MarginVerticalPercent = 6
+    };
+
+    /// <summary>Splits the first matching Style line into its comma-separated fields (Name is [0]).</summary>
+    private static string[] StyleFields(string ass, string name = "Default")
+    {
+        foreach (var line in ass.Split('\n'))
+        {
+            var t = line.Trim('\r');
+            if (t.StartsWith("Style:", StringComparison.Ordinal) && t.Contains(name + ",", StringComparison.Ordinal))
+            {
+                var c = t.IndexOf(':');
+                return t[(c + 1)..].Trim().Split(',');
+            }
+        }
+
+        return Array.Empty<string>();
+    }
+
+    private static string PlayRes(string ass, string key)
+    {
+        foreach (var line in ass.Split('\n'))
+        {
+            var t = line.Trim('\r');
+            if (t.StartsWith(key + ":", StringComparison.Ordinal))
+            {
+                return t[(t.IndexOf(':') + 1)..].Trim();
+            }
+        }
+
+        return null!;
+    }
+
+    [Fact]
+    public void StyleAss_RewritesPlayResY()
+    {
+        var styled = SubtitleStyler.StyleAss(Ass("Dialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,text"), Style(), 1920, 1080);
+        Assert.Equal("1080", PlayRes(styled, "PlayResY"));
+    }
+
+    [Fact]
+    public void StyleAss_RewritesPlayResX()
+    {
+        var styled = SubtitleStyler.StyleAss(Ass("Dialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,text"), Style(), 1920, 1080);
+        Assert.Equal("1920", PlayRes(styled, "PlayResX"));
+    }
+
+    [Fact]
+    public void StyleAss_InsertsPlayRes_WhenMissing()
+    {
+        // An ASS with no PlayResX/Y in [Script Info].
+        var noRes = "[Script Info]\nScriptType: v4.00+\n\n[V4+ Styles]\nFormat: Name, Fontname\nStyle: Default,Arial\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\nDialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,text\n";
+        var styled = SubtitleStyler.StyleAss(noRes, Style(), 1920, 1080);
+        Assert.Equal("1920", PlayRes(styled, "PlayResX"));
+        Assert.Equal("1080", PlayRes(styled, "PlayResY"));
+    }
+
+    [Fact]
+    public void StyleAss_FontSizeIsPercentOfHeight()
+    {
+        // 4% of 1080 = 43 (rounded)
+        var styled = SubtitleStyler.StyleAss(Ass("Dialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,text"), Style(), 1920, 1080);
+        Assert.Equal("43", StyleFields(styled)[2]);
+    }
+
+    [Fact]
+    public void StyleAss_FontNameAppearsInStyleLine()
+    {
+        var style = Style();
+        style.FontFamily = "Liberation Sans";
+        var styled = SubtitleStyler.StyleAss(Ass("Dialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,text"), style, 1920, 1080);
+        Assert.Equal("Liberation Sans", StyleFields(styled)[1]);
+    }
+
+    [Fact]
+    public void StyleAss_EmptyFontNamePassesThrough()
+    {
+        var style = Style();
+        style.FontFamily = "";
+        var styled = SubtitleStyler.StyleAss(Ass("Dialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,text"), style, 1920, 1080);
+        Assert.Equal("", StyleFields(styled)[1]);
+    }
+
+    [Fact]
+    public void StyleAss_PrimaryColour_White()
+    {
+        var styled = SubtitleStyler.StyleAss(Ass("Dialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,text"), Style(), 1920, 1080);
+        Assert.Equal("&H00FFFFFF&", StyleFields(styled)[3]);
+    }
+
+    [Fact]
+    public void StyleAss_PrimaryColour_Red_BgrSwap()
+    {
+        var style = Style();
+        style.PrimaryColour = "#FF0000"; // red
+        var styled = SubtitleStyler.StyleAss(Ass("Dialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,text"), style, 1920, 1080);
+        Assert.Equal("&H000000FF&", StyleFields(styled)[3]);
+    }
+
+    [Fact]
+    public void StyleAss_OutlineColour_Black()
+    {
+        var styled = SubtitleStyler.StyleAss(Ass("Dialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,text"), Style(), 1920, 1080);
+        Assert.Equal("&H00000000&", StyleFields(styled)[5]);
+    }
+
+    [Fact]
+    public void StyleAss_BoldTrue_SetsMinus1()
+    {
+        var style = Style();
+        style.Bold = true;
+        var styled = SubtitleStyler.StyleAss(Ass("Dialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,text"), style, 1920, 1080);
+        Assert.Equal("-1", StyleFields(styled)[7]);
+    }
+
+    [Fact]
+    public void StyleAss_BoldFalse_SetsZero()
+    {
+        var styled = SubtitleStyler.StyleAss(Ass("Dialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,text"), Style(), 1920, 1080);
+        Assert.Equal("0", StyleFields(styled)[7]);
+    }
+
+    [Fact]
+    public void StyleAss_ItalicTrue_SetsMinus1()
+    {
+        var style = Style();
+        style.Italic = true;
+        var styled = SubtitleStyler.StyleAss(Ass("Dialogue: 0,0:01.00,0:00:05.00,Default,,0,0,0,,text"), style, 1920, 1080);
+        Assert.Equal("-1", StyleFields(styled)[8]);
+    }
+
+    [Fact]
+    public void StyleAss_Alignment_SetsAssAlignment()
+    {
+        var style = Style();
+        style.Alignment = 8; // top-center
+        var styled = SubtitleStyler.StyleAss(Ass("Dialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,text"), style, 1920, 1080);
+        Assert.Equal("8", StyleFields(styled)[18]);
+    }
+
+    [Fact]
+    public void StyleAss_MarginV_PercentToPixels()
+    {
+        // 6% of 1080 = 65 (rounded)
+        var styled = SubtitleStyler.StyleAss(Ass("Dialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,text"), Style(), 1920, 1080);
+        Assert.Equal("65", StyleFields(styled)[21]);
+    }
+
+    [Fact]
+    public void StyleAss_RewritesAllStyles_ToIdenticalValues()
+    {
+        // Two styles with different fonts in [V4+ Styles] — both should end up with the same values.
+        var input = "[Script Info]\nScriptType: v4.00+\nPlayResX: 1920\nPlayResY: 1080\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Default,Arial,48,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,2,1,2,40,40,60,1\nStyle: Signs,Comic Sans,99,&H0000FFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,2,1,7,10,10,20,1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\nDialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,text\n";
+        var styled = SubtitleStyler.StyleAss(input, Style(), 1920, 1080);
+        var def = StyleFields(styled, "Default");
+        var signs = StyleFields(styled, "Signs");
+        Assert.NotEmpty(def);
+        Assert.NotEmpty(signs);
+        // Same font size, colour, alignment — everything except the name.
+        Assert.Equal(def[2], signs[2]); // fontsize
+        Assert.Equal(def[3], signs[3]); // primary
+        Assert.Equal(def[18], signs[18]); // alignment
+    }
+
+    [Fact]
+    public void StyleAss_PreservesStyleNames()
+    {
+        var input = "[Script Info]\nScriptType: v4.00+\nPlayResX: 1920\nPlayResY: 1080\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Default,Arial,48,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,2,1,2,40,40,60,1\nStyle: Signs,Comic Sans,99,&H0000FFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,2,1,7,10,10,20,1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\nDialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,text\n";
+        var styled = SubtitleStyler.StyleAss(input, Style(), 1920, 1080);
+        Assert.Equal("Default", StyleFields(styled, "Default")[0]);
+        Assert.Equal("Signs", StyleFields(styled, "Signs")[0]);
+    }
+
+    [Fact]
+    public void StyleAss_StripsAssOverrides()
+    {
+        var styled = SubtitleStyler.StyleAss(Ass("Dialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,{\\i1}Hello{\\i0} world"), Style(), 1920, 1080);
+        Assert.Equal("Hello world", TextOf(styled));
+    }
+
+    [Fact]
+    public void StyleAss_StripsPositionOverride()
+    {
+        var styled = SubtitleStyler.StyleAss(Ass("Dialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,{\\pos(100,200)}text"), Style(), 1920, 1080);
+        Assert.Equal("text", TextOf(styled));
+    }
+
+    [Fact]
+    public void StyleAss_StripsColourOverride()
+    {
+        var styled = SubtitleStyler.StyleAss(Ass("Dialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,{\\c&H0000FF&}text"), Style(), 1920, 1080);
+        Assert.Equal("text", TextOf(styled));
+    }
+
+    [Fact]
+    public void StyleAss_PreservesLineBreaks()
+    {
+        // \N is a line break escape, not inside {} — must survive.
+        var styled = SubtitleStyler.StyleAss(Ass("Dialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,Line1\\NLine2"), Style(), 1920, 1080);
+        Assert.Equal("Line1\\NLine2", TextOf(styled));
+    }
+
+    [Fact]
+    public void StyleAss_PreservesFormatLine()
+    {
+        var styled = SubtitleStyler.StyleAss(Ass("Dialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,text"), Style(), 1920, 1080);
+        Assert.Contains("Format: Layer, Start, End, Style, Name", styled);
+    }
+
+    [Fact]
+    public void StyleAss_HandlesNoStylesSection()
+    {
+        // An ASS with no [V4+ Styles] section — should not crash, just strip overrides and set PlayRes.
+        var noStyles = "[Script Info]\nScriptType: v4.00+\nPlayResY: 288\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\nDialogue: 0,0:00:01.00,0:00:05.00,Default,,0,0,0,,{\\i1}text{\\i0}\n";
+        var styled = SubtitleStyler.StyleAss(noStyles, Style(), 1920, 1080);
+        Assert.Equal("1080", PlayRes(styled, "PlayResY"));
+        Assert.DoesNotContain("{\\i1}", styled);
+    }
+
+    [Fact]
+    public void StyleAss_NullStyle_Throws()
+        => Assert.Throws<ArgumentNullException>(() => SubtitleStyler.StyleAss("x", null!, 1920, 1080));
+
+    [Fact]
+    public void StyleAss_NullInput_Throws()
+        => Assert.Throws<ArgumentNullException>(() => SubtitleStyler.StyleAss(null!, Style(), 1920, 1080));
 }

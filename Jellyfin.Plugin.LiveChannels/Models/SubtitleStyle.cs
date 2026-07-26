@@ -4,7 +4,7 @@ namespace Jellyfin.Plugin.LiveChannels.Models;
 /// The global appearance applied to every burned-in text subtitle when <see cref="Enabled"/> is on.
 /// When enabled, the original subtitle's own fonts, colours, positions, and inline styling are fully
 /// overridden so every channel shows one uniform look. When disabled, each subtitle keeps its
-/// original styling (after HTML tag cleanup).
+/// original appearance (after HTML tag cleanup).
 /// </summary>
 public sealed class SubtitleStyle
 {

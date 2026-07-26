@@ -118,14 +118,14 @@ public sealed class SubtitleStreamInfo
     /// <summary>Gets a value indicating whether the stream is text-based (libass) rather than bitmap (PGS/VOBSUB).</summary>
     public bool IsText { get; init; }
 
+    /// <summary>Gets a value indicating whether the subtitle is flagged as hearing-impaired (SDH).</summary>
+    public bool IsHearingImpaired { get; init; }
+
     /// <summary>Gets a value indicating whether the subtitle is an external sidecar file (true) or embedded in the media container (false).</summary>
     public bool IsExternal { get; init; }
 
-    /// <summary>Gets the ISO 639-3 language code (e.g. <c>eng</c>, <c>jpn</c>), or empty when unknown.</summary>
+    /// <summary>Gets the three-letter ISO language code (e.g. <c>eng</c>, <c>jpn</c>), or empty when unknown.</summary>
     public string Language { get; init; } = string.Empty;
-
-    /// <summary>Gets a value indicating whether the subtitle is flagged as hearing-impaired (SDH).</summary>
-    public bool IsHearingImpaired { get; init; }
 }
 
 /// <summary>

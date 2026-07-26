@@ -481,7 +481,7 @@ public class StreamSessionService
             return (false, -1);
         }
 
-        var subtitle = ChannelService.FindBurnInSubtitle(program, channel.SubtitleBurnIn);
+        var subtitle = _channels.FindBurnInSubtitle(program, channel.SubtitleBurnIn);
 
         // Every text-subtitle burn-in routes through a pre-extracted, cleaned ASS file: it is the only
         // path that strips HTML markup (e.g. <i>, <font>) that libass would otherwise render as literal
@@ -503,13 +503,53 @@ public class StreamSessionService
         var (args, hardwareDecode) = BuildArguments(program.Path, offset, timeline, subtitle, program.SourceHeight, subtitlePath, softwareDecode: false, program.IsHdr, program.DefaultAudioOrdinal, burstSeconds(), durationLimit);
         var (total, lastOut, exitCode) = await RunFfmpegAsync(ffmpeg, args, program.Title, output, cancellationToken, stats).ConfigureAwait(false);
 
-        // The per-item path has no continuous decoder to fall back, so retry a hardware-decode that produced
-        // nothing (e.g. a codec the GPU can't decode) once in software, so one bad item can't blank the channel.
+        // Step 2: try an external text subtitle alternative before anything more expensive. This catches
+        // bitmap stream-index mismatches and other subtitle-specific filtergraph failures where a sidecar
+        // text sub would work reliably. Cheap (sidecar extraction is fast) and keeps hardware decode.
+        if (total == 0 && subtitle.HasValue && !cancellationToken.IsCancellationRequested)
+        {
+            var alt = _channels.FindExternalTextAlternative(program, subtitle.Value.RelativeIndex);
+            if (alt is not null)
+            {
+                _logger.LogInformation("Channel {Name}: trying external text subtitle alternative for \"{Title}\"", channel.Name, program.Title);
+                var altPath = await _channels.TryExtractTuneInSubtitleAsync(program.ItemId, alt.Value.RelativeIndex, offset, _subtitleRoot, cancellationToken).ConfigureAwait(false);
+                if (altPath is not null)
+                {
+                    var (altArgs, _) = BuildArguments(program.Path, offset, timeline, alt, program.SourceHeight, altPath, softwareDecode: false, program.IsHdr, program.DefaultAudioOrdinal, burstSeconds(), durationLimit);
+                    var (altTotal, altLastOut, altExit) = await RunFfmpegAsync(ffmpeg, altArgs, program.Title, output, cancellationToken, stats).ConfigureAwait(false);
+                    if (altTotal > 0)
+                    {
+                        total = altTotal;
+                        lastOut = altLastOut;
+                        exitCode = altExit;
+                        subtitle = alt;
+                        subtitlePath = altPath;
+                    }
+                }
+            }
+        }
+
+        // Step 3: retry with software decode, keeping the subtitle. Catches hardware decode failures
+        // (a codec the GPU can't handle) — more expensive but preserves subtitles.
         if (total == 0 && hardwareDecode && !cancellationToken.IsCancellationRequested)
         {
             _logger.LogWarning("Channel {Name}: hardware decode produced no output for \"{Title}\"; retrying in software", channel.Name, program.Title);
             var (swArgs, _) = BuildArguments(program.Path, offset, timeline, subtitle, program.SourceHeight, subtitlePath, softwareDecode: true, program.IsHdr, program.DefaultAudioOrdinal, burstSeconds(), durationLimit);
             (total, lastOut, exitCode) = await RunFfmpegAsync(ffmpeg, swArgs, program.Title, output, cancellationToken, stats).ConfigureAwait(false);
+        }
+
+        // Step 4 + 5: drop the subtitle entirely — last resort so one bad subtitle can't blank the channel.
+        if (total == 0 && subtitle.HasValue && !cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogWarning("Channel {Name}: retrying \"{Title}\" without subtitle burn-in after producer failure", channel.Name, program.Title);
+            var (noSubArgs, noSubHw) = BuildArguments(program.Path, offset, timeline, null, program.SourceHeight, null, softwareDecode: false, program.IsHdr, program.DefaultAudioOrdinal, burstSeconds(), durationLimit);
+            (total, lastOut, exitCode) = await RunFfmpegAsync(ffmpeg, noSubArgs, program.Title, output, cancellationToken, stats).ConfigureAwait(false);
+
+            if (total == 0 && noSubHw && !cancellationToken.IsCancellationRequested)
+            {
+                var (noSubSwArgs, _) = BuildArguments(program.Path, offset, timeline, null, program.SourceHeight, null, softwareDecode: true, program.IsHdr, program.DefaultAudioOrdinal, burstSeconds(), durationLimit);
+                (total, lastOut, exitCode) = await RunFfmpegAsync(ffmpeg, noSubSwArgs, program.Title, output, cancellationToken, stats).ConfigureAwait(false);
+            }
         }
 
         // A clean (exit 0), uncancelled run of a WHOLE item (no tune-in seek) reveals the item's true
