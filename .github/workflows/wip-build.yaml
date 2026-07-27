@@ -1,0 +1,171 @@
+name: '🔧 WIP Build'
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build subtitle-improvements
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      checksum: ${{ steps.checksum.outputs.checksum }}
+      target_abi: ${{ steps.info.outputs.target_abi }}
+      commit_log: ${{ steps.commits.outputs.commit_log }}
+    steps:
+      - name: Checkout subtitle-improvements
+        uses: actions/checkout@v4
+        with:
+          ref: subtitle-improvements
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Compute next WIP version
+        id: version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          LATEST=$(gh release list --limit 100 --json tagName --jq '.[].tagName' \
+            | grep '^v10\.11\.999\.' | sort -Vr | head -1)
+
+          if [ -z "$LATEST" ]; then
+            echo "No previous WIP release found. Starting at 10.11.999.1"
+            echo "version=10.11.999.1" >> "$GITHUB_OUTPUT"
+            echo "prev_tag=" >> "$GITHUB_OUTPUT"
+          else
+            LAST_X=$(echo "$LATEST" | sed 's/v10\.11\.999\.//')
+            NEW_X=$((LAST_X + 1))
+            echo "Latest WIP release: $LATEST. Incrementing to 10.11.999.$NEW_X"
+            echo "version=10.11.999.$NEW_X" >> "$GITHUB_OUTPUT"
+            echo "prev_tag=$LATEST" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Read targetAbi from build.yaml
+        id: info
+        run: |
+          TARGET_ABI=$(grep '^targetAbi:' build.yaml \
+            | sed 's/targetAbi: *"\?\([^"]*\)"\?.*/\1/' | tr -d '"')
+          echo "target_abi=${TARGET_ABI}" >> "$GITHUB_OUTPUT"
+
+      - name: Build plugin
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # Patch build.yaml so build.sh stamps the WIP version into assembly + zip name.
+          # Never committed (this is a fresh runner), so no restore needed.
+          sed -i "s/^version: .*/version: \"${VERSION}\"/" build.yaml
+          echo "Patched build.yaml:"
+          grep '^version:' build.yaml
+
+          chmod +x build.sh
+          ./build.sh
+
+      - name: Read checksum
+        id: checksum
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          CHECKSUM=$(cat "dist/jellyfin-plugin-livechannels-${VERSION}.zip.md5")
+          echo "checksum=${CHECKSUM}" >> "$GITHUB_OUTPUT"
+
+      - name: Build commit log
+        id: commits
+        env:
+          PREV_TAG: ${{ steps.version.outputs.prev_tag }}
+        run: |
+          if [ -n "$PREV_TAG" ]; then
+            LOG=$(git log "${PREV_TAG}..HEAD" --pretty=format:"- %s" --no-merges)
+          else
+            LOG=$(git log -30 --pretty=format:"- %s" --no-merges)
+          fi
+
+          {
+            echo "commit_log<<EOF"
+            echo "$LOG"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+          COMMIT_LOG: ${{ steps.commits.outputs.commit_log }}
+        run: |
+          TAG="v${VERSION}"
+
+          # Tag the subtitle-improvements commit that was actually built (NOT
+          # github.sha, which for workflow_dispatch is master's HEAD).
+          git tag "$TAG" "$(git rev-parse HEAD)"
+          git push origin "$TAG"
+
+          # Publish directly (not draft) so the download URL is live immediately
+          # and the manifest sourceUrl resolves.
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --notes "$COMMIT_LOG" \
+            "./dist/jellyfin-plugin-livechannels-${VERSION}.zip" \
+            "./dist/jellyfin-plugin-livechannels-${VERSION}.zip.md5"
+
+  update-manifest:
+    name: Update manifest on master
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout master
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+
+      - name: Prepend manifest entry
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+          CHECKSUM: ${{ needs.build.outputs.checksum }}
+          TARGET_ABI: ${{ needs.build.outputs.target_abi }}
+          COMMIT_LOG: ${{ needs.build.outputs.commit_log }}
+          REPO: ${{ github.repository }}
+        run: |
+          TAG="v${VERSION}"
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          SOURCE_URL="https://github.com/${REPO}/releases/download/${TAG}/jellyfin-plugin-livechannels-${VERSION}.zip"
+
+          NEW_ENTRY=$(jq -n \
+            --arg version "$VERSION" \
+            --arg changelog "$COMMIT_LOG" \
+            --arg targetAbi "$TARGET_ABI" \
+            --arg sourceUrl "$SOURCE_URL" \
+            --arg checksum "$CHECKSUM" \
+            --arg timestamp "$TIMESTAMP" \
+            '{
+              version: $version,
+              changelog: $changelog,
+              targetAbi: $targetAbi,
+              sourceUrl: $sourceUrl,
+              checksum: $checksum,
+              timestamp: $timestamp
+            }')
+
+          jq --argjson new "$NEW_ENTRY" \
+            '.[0].versions = [$new] + .[0].versions' \
+            manifest.json > manifest.json.tmp
+          mv manifest.json.tmp manifest.json
+
+          echo "manifest.json now has $(jq '.[0].versions | length' manifest.json) version(s)"
+          echo "Top version: $(jq -r '.[0].versions[0].version' manifest.json)"
+
+      - name: Commit manifest
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add manifest.json
+          git commit -m "WIP build ${VERSION}"
+          git push origin HEAD:master
