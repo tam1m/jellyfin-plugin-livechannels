@@ -55,6 +55,11 @@ public static class ProgramLoopBuilder
             return Array.Empty<ProgramEntry>();
         }
 
+        if (options.Mode == LoopMode.AsResolved)
+        {
+            return items.ToList();
+        }
+
         var blockSize = Math.Max(1, options.EpisodesPerBlock);
         var blocks = new List<Block>();
 
