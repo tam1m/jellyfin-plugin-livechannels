@@ -19,7 +19,7 @@ public partial class ChannelService
     // episodes or specials are wanted; the season-0 split between them is applied per item during the build.
     private static BaseItemKind[] BuildKinds(Channel channel)
     {
-        var kinds = new List<BaseItemKind>(4);
+        var kinds = new List<BaseItemKind>(5);
         if (channel.IncludeMovies)
         {
             kinds.Add(BaseItemKind.Movie);
@@ -38,6 +38,11 @@ public partial class ChannelService
         if (channel.IncludeHomeVideos)
         {
             kinds.Add(BaseItemKind.Video);
+        }
+
+        if (channel.IncludeTrailers)
+        {
+            kinds.Add(BaseItemKind.Trailer);
         }
 
         return kinds.ToArray();
