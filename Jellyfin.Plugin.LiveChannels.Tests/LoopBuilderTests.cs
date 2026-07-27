@@ -287,4 +287,31 @@ public class LoopBuilderTests
         var loop = ProgramLoopBuilder.Build(items, Opts(mode: LoopMode.Chronological));
         Assert.Equal(new[] { "Dated", "Undated" }, loop.Select(e => e.Title).ToArray());
     }
+
+    [Fact]
+    public void AsResolved_PreservesInputOrder()
+    {
+        var s1 = Guid.NewGuid();
+        var items = new List<ProgramEntry>
+        {
+            Movie("Zebra"),
+            Ep(s1, "Show A", 1, 3, "C"),
+            Movie("Alpha"),
+            Ep(s1, "Show A", 1, 1, "A"),
+        };
+
+        var loop = ProgramLoopBuilder.Build(items, Opts(mode: LoopMode.AsResolved));
+
+        Assert.Equal(4, loop.Count);
+        Assert.Same(items[0], loop[0]);
+        Assert.Same(items[1], loop[1]);
+        Assert.Same(items[2], loop[2]);
+        Assert.Same(items[3], loop[3]);
+    }
+
+    [Fact]
+    public void AsResolved_EmptyReturnsEmpty()
+        => Assert.Empty(ProgramLoopBuilder.Build(
+            Array.Empty<ProgramEntry>(),
+            Opts(mode: LoopMode.AsResolved)));
 }

@@ -12,5 +12,8 @@ public enum LoopMode
     Alphabetical = 1,
 
     /// <summary>Order the blocks by release or air date, oldest first.</summary>
-    Chronological = 2
+    Chronological = 2,
+
+    /// <summary>Preserve the source order (e.g. a collection's own arrangement). No grouping, shuffling, or reordering.</summary>
+    AsResolved = 3
 }
