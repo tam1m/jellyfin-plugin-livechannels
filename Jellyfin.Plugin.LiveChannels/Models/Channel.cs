@@ -93,6 +93,9 @@ public class Channel
     /// <summary>Gets or sets a value indicating whether home videos (loose <c>Video</c> items, as found in a Home Videos library) are included. Off by default so existing channels are unchanged; a Movies or Shows library has no such items.</summary>
     public bool IncludeHomeVideos { get; set; }
 
+    /// <summary>Gets or sets a value indicating whether trailers are included. Off by default.</summary>
+    public bool IncludeTrailers { get; set; }
+
     /// <summary>Gets or sets a value indicating whether the channel's blocks are shuffled (deterministically) rather than ordered by name. Legacy flag superseded by <see cref="LoopMode"/>; see <see cref="EffectiveLoopMode"/>.</summary>
     public bool Shuffle { get; set; } = true;
 

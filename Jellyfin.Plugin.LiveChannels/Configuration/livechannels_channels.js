@@ -1067,6 +1067,7 @@ export default function (view) {
         el('includeSpecials').checked = !!ch.IncludeSpecials;
         el('includeMusicVideos').checked = ch.IncludeMusicVideos !== false;
         el('includeHomeVideos').checked = !!ch.IncludeHomeVideos;
+        el('includeTrailers').checked = !!ch.IncludeTrailers;
         el('loopMode').value = ch.LoopMode || (ch.Shuffle === false ? 'Alphabetical' : 'Shuffle');
         el('episodeOrder').value = ch.ShuffleEpisodes ? 'random' : 'air';
         el('favorKind').value = ch.FavorKind || 'None';
@@ -1114,6 +1115,7 @@ export default function (view) {
         ch.IncludeSpecials = el('includeSpecials').checked;
         ch.IncludeMusicVideos = el('includeMusicVideos').checked;
         ch.IncludeHomeVideos = el('includeHomeVideos').checked;
+        ch.IncludeTrailers = el('includeTrailers').checked;
         ch.LoopMode = el('loopMode').value;
         ch.Shuffle = ch.LoopMode === 'Shuffle';
         ch.ShuffleEpisodes = el('episodeOrder').value === 'random';
