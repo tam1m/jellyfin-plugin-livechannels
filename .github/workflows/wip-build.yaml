@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   build:
-    name: Build subtitle-improvements
+    name: Build extra-features branch
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -16,10 +16,10 @@ jobs:
       target_abi: ${{ steps.info.outputs.target_abi }}
       commit_log: ${{ steps.commits.outputs.commit_log }}
     steps:
-      - name: Checkout subtitle-improvements
+      - name: Checkout extra-features
         uses: actions/checkout@v4
         with:
-          ref: subtitle-improvements
+          ref: extra-features
           fetch-depth: 0
 
       - name: Setup .NET
@@ -100,7 +100,7 @@ jobs:
         run: |
           TAG="v${VERSION}"
 
-          # Tag the subtitle-improvements commit that was actually built (NOT
+          # Tag the extra-features commit that was actually built (NOT
           # github.sha, which for workflow_dispatch is master's HEAD).
           git tag "$TAG" "$(git rev-parse HEAD)"
           git push origin "$TAG"
