@@ -42,8 +42,8 @@ public class ScheduleCacheSerializationTests
             DefaultAudioLanguage = "jpn",
             Subtitles = new[]
             {
-                new SubtitleStreamInfo { RelativeIndex = 0, AbsoluteIndex = 3, IsForced = true, IsDefault = false, IsText = true },
-                new SubtitleStreamInfo { RelativeIndex = 1, AbsoluteIndex = 4, IsForced = false, IsDefault = true, IsText = false }
+                new SubtitleStreamInfo { RelativeIndex = 0, AbsoluteIndex = 3, IsForced = true, IsDefault = false, IsText = true, Language = "eng", IsHearingImpaired = false },
+                new SubtitleStreamInfo { RelativeIndex = 1, AbsoluteIndex = 4, IsForced = false, IsDefault = true, IsText = false, Language = "jpn", IsHearingImpaired = true }
             }
         };
 
@@ -81,9 +81,13 @@ public class ScheduleCacheSerializationTests
         Assert.True(entry.Subtitles[0].IsForced);
         Assert.True(entry.Subtitles[0].IsText);
         Assert.Equal(3, entry.Subtitles[0].AbsoluteIndex);
+        Assert.Equal("eng", entry.Subtitles[0].Language);
+        Assert.False(entry.Subtitles[0].IsHearingImpaired);
         Assert.True(entry.Subtitles[1].IsDefault);
         Assert.False(entry.Subtitles[1].IsText);
         Assert.Equal(1, entry.Subtitles[1].RelativeIndex);
+        Assert.Equal("jpn", entry.Subtitles[1].Language);
+        Assert.True(entry.Subtitles[1].IsHearingImpaired);
     }
 
     [Fact]
@@ -125,5 +129,31 @@ public class ScheduleCacheSerializationTests
         Assert.Null(entry.DefaultAudioOrdinal);
         Assert.Null(entry.DefaultAudioLanguage);
         Assert.Empty(entry.Subtitles);
+    }
+
+    [Fact]
+    public void OldCache_SubtitleStreamInfo_WithoutNewFields_DeserializesWithDefaults()
+    {
+        // Old cache entries saved before Language and IsHearingImpaired existed should
+        // deserialize with empty string and false respectively.
+        var json = """
+        [
+            {
+                "ItemId": "11111111-1111-1111-1111-111111111111",
+                "Title": "Old Entry",
+                "DurationTicks": 1000,
+                "Subtitles": [
+                    { "RelativeIndex": 0, "AbsoluteIndex": 2, "IsForced": true, "IsDefault": false, "IsText": true, "IsExternal": false }
+                ]
+            }
+        ]
+        """;
+
+        var restored = JsonSerializer.Deserialize<List<ProgramEntry>>(json, Options);
+        Assert.NotNull(restored);
+        var entry = Assert.Single(restored!);
+        var sub = Assert.Single(entry.Subtitles);
+        Assert.Equal("", sub.Language);
+        Assert.False(sub.IsHearingImpaired);
     }
 }

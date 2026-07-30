@@ -129,6 +129,14 @@ public sealed class SubtitleStreamInfo
 
     /// <summary>Gets a value indicating whether the subtitle is a separate file beside the media rather than a track inside it. An external subtitle has no stream index within the media file, so it can only be burned from the file Jellyfin resolves for it.</summary>
     public bool IsExternal { get; init; }
+
+    /// <summary>Gets the language tag of this subtitle stream as reported by the media probe
+    /// (e.g. <c>eng</c>, <c>jpn</c>), or empty when the stream carries no language tag and
+    /// no language could be inferred from the filename.</summary>
+    public string Language { get; init; } = string.Empty;
+
+    /// <summary>Gets a value indicating whether the stream is flagged as hearing-impaired (SDH).</summary>
+    public bool IsHearingImpaired { get; init; }
 }
 
 /// <summary>

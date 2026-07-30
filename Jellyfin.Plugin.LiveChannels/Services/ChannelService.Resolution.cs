@@ -106,7 +106,9 @@ public partial class ChannelService
                 IsForced = s.IsForced,
                 IsDefault = s.IsDefault,
                 IsText = s.IsTextSubtitleStream,
-                IsExternal = s.IsExternal
+                IsExternal = s.IsExternal,
+                Language = s.Language ?? string.Empty,
+                IsHearingImpaired = s.IsHearingImpaired
             };
         }
 

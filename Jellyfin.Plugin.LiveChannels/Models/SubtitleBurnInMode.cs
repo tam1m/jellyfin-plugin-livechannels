@@ -13,5 +13,8 @@ public enum SubtitleBurnInMode
     Forced = 1,
 
     /// <summary>Always burn in a subtitle track: the forced one if present, otherwise the default or first available.</summary>
-    Always = 2
+    Always = 2,
+
+    /// <summary>Respect embedded metadata flags (forced → default → first). Language preference acts as a tiebreaker only — it never excludes a track for its language.</summary>
+    Default = 3
 }

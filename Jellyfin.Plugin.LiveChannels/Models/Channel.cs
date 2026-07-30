@@ -117,6 +117,11 @@ public class Channel
     /// </summary>
     public SubtitleBurnInMode SubtitleBurnIn { get; set; } = SubtitleBurnInMode.Never;
 
+    /// <summary>Gets or sets the comma-separated ordered list of preferred subtitle languages
+    /// for this channel, as three-letter ISO codes (e.g. <c>"eng,deu,jap"</c>). Empty means the
+    /// global setting is used instead. When both are empty no language preference is applied.</summary>
+    public string SubtitlePreferredLanguages { get; set; } = string.Empty;
+
     /// <summary>Gets or sets a value indicating whether the channel is served. Disabled channels are absent from Live TV and the guide.</summary>
     public bool Enabled { get; set; } = true;
 

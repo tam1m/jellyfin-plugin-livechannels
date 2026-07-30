@@ -11,73 +11,13 @@ using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.LiveChannels.Services;
 
-// ChannelService: picking and extracting the burn-in subtitle for a program.
+// ChannelService: extracting the burn-in subtitle for a program. The selection logic lives in
+// Utilities/SubtitleSelector.cs.
 public partial class ChannelService
 {
     // Item/track keys whose subtitle extraction is currently running, so concurrent tune-ins don't pile a
     // second whole-file extraction onto the producer's critical path.
     private readonly ConcurrentDictionary<string, byte> _subtitleExtractions = new(StringComparer.Ordinal);
-
-    /// <summary>
-    /// Picks the subtitle track to burn into an item for the given mode. <see cref="SubtitleBurnInMode.Forced"/>
-    /// burns only the forced track, except when the default audio track is in a known non-English language, where
-    /// it behaves like <see cref="SubtitleBurnInMode.Always"/> so foreign-language content stays followable.
-    /// <see cref="SubtitleBurnInMode.Always"/> burns the forced track when present, otherwise the default or first.
-    /// </summary>
-    /// <param name="program">The program, carrying its subtitle streams and default-audio language probed at refresh.</param>
-    /// <param name="mode">The channel's subtitle burn-in mode.</param>
-    /// <returns>The chosen subtitle's index among the item's subtitle streams and whether it is text-based, or <c>null</c> when nothing should be burned in.</returns>
-    public static (int RelativeIndex, bool IsText)? FindBurnInSubtitle(ProgramEntry program, SubtitleBurnInMode mode)
-    {
-        ArgumentNullException.ThrowIfNull(program);
-        if (mode == SubtitleBurnInMode.Never)
-        {
-            return null;
-        }
-
-        // An external bitmap subtitle (a .sup beside the media) is the one kind nothing can burn: it is a picture,
-        // so it has to be composited from a mapped stream, and being external it has no stream inside the media
-        // file to map. Dropping it here lets another track be chosen instead of the channel silently showing none.
-        var subtitles = program.Subtitles.Where(s => s.IsText || !s.IsExternal).ToList();
-
-        // Forced always wins when present, in either mode.
-        for (var i = 0; i < subtitles.Count; i++)
-        {
-            if (subtitles[i].IsForced)
-            {
-                return (subtitles[i].RelativeIndex, subtitles[i].IsText);
-            }
-        }
-
-        // "Forced only" also burns subtitles when the audio we play is not in the configured default language, so
-        // foreign-language content stays followable. Audio in the default language, or untagged audio, shows
-        // nothing without a forced track, so ordinary content is never subtitled by surprise.
-        var defaultLanguage = Plugin.Instance?.ReadConfiguration(c => c.DefaultSubtitleLanguage) ?? string.Empty;
-        var audioLanguage = program.DefaultAudioLanguage;
-        var forcedForForeignAudio = mode == SubtitleBurnInMode.Forced
-            && !string.IsNullOrEmpty(audioLanguage)
-            && !string.IsNullOrEmpty(defaultLanguage)
-            && !string.Equals(audioLanguage, defaultLanguage, StringComparison.OrdinalIgnoreCase);
-
-        if ((mode == SubtitleBurnInMode.Always || forcedForForeignAudio) && subtitles.Count > 0)
-        {
-            // Both "Always" and non-English-audio "Forced only" burn the same track "Always" picks: the default
-            // subtitle, or the first one when none is flagged default.
-            var chosen = 0;
-            for (var i = 0; i < subtitles.Count; i++)
-            {
-                if (subtitles[i].IsDefault)
-                {
-                    chosen = i;
-                    break;
-                }
-            }
-
-            return (subtitles[chosen].RelativeIndex, subtitles[chosen].IsText);
-        }
-
-        return null;
-    }
 
     /// <summary>
     /// Resolves the chosen embedded text subtitle to a burn-ready file the same way Jellyfin's own transcodes do:
@@ -133,7 +73,8 @@ public partial class ChannelService
             var ready = await Task.WhenAny(resolve, Task.Delay(TimeSpan.FromSeconds(1.5), cancellationToken)).ConfigureAwait(false);
             if (ready != resolve || resolve.Status != TaskStatus.RanToCompletion)
             {
-                _logger.LogDebug("Live Channels: subtitle extraction for {ItemId} is still warming; burning from the media file instead", itemId);
+                _logger.LogWarning("[Subtitle] \"{Title}\" extraction warming for #{Index} — burning from media file",
+                    item.Name, relativeIndex);
                 return null;
             }
 
@@ -142,6 +83,14 @@ public partial class ChannelService
             {
                 return null;
             }
+
+            var subStream = subtitles[relativeIndex];
+            _logger.LogWarning("[Subtitle] \"{Title}\" resolved #{Index} \"{Lang}\" ({Codec}{Flags}) → {Path}",
+                item.Name, relativeIndex,
+                subStream.Language ?? "?",
+                subStream.Codec,
+                (subStream.IsForced ? " forced" : "") + (subStream.IsDefault ? " default" : "") + (subStream.IsHearingImpaired ? " SDH" : ""),
+                path);
 
             return new BurnInSubtitleFile(path, AttachmentFontsDirectory(source.Id));
         }

@@ -28,6 +28,7 @@ public static class ConfigurationValidator
         ArgumentNullException.ThrowIfNull(config);
 
         ValidatePlayback(config);
+        ValidateLanguageList(config.SubtitlePreferredLanguages, "Subtitle preferred languages");
 
         // The Popular channel takes the same per-channel checks as every configured channel (its number and
         // sources are fixed by the plugin, so only its editable surface is validated).
@@ -214,6 +215,28 @@ public static class ConfigurationValidator
         if (channel.MinCriticRating is < 0 or > 100)
         {
             throw new ArgumentException("Minimum critic rating must be between 0 and 100: " + Describe(channel));
+        }
+    }
+
+    private static void ValidateLanguageList(string? value, string label)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return;
+        }
+
+        foreach (var part in value.Split(','))
+        {
+            var trimmed = part.Trim();
+            if (trimmed.Length == 0)
+            {
+                throw new ArgumentException(label + " must not contain empty entries.");
+            }
+
+            if (trimmed.Length > 10)
+            {
+                throw new ArgumentException(label + " contains an entry that is too long: '" + trimmed + "'.");
+            }
         }
     }
 

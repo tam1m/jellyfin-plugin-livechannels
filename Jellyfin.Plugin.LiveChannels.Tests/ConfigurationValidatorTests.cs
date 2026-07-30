@@ -298,4 +298,25 @@ public class ConfigurationValidatorTests
             Directory.Delete(dir, recursive: true);
         }
     }
+
+    [Theory]
+    [InlineData("eng,deu,jap")]
+    [InlineData("eng")]
+    [InlineData("")]
+    [InlineData(" eng , deu ")]
+    public void SubtitleLanguageList_Valid_DoesNotThrow(string value)
+        => ConfigurationValidator.Validate(new PluginConfiguration { SubtitlePreferredLanguages = value });
+
+    [Theory]
+    [InlineData("eng,,deu")]  // empty entry
+    [InlineData("eng,")]       // trailing empty entry
+    [InlineData(",eng")]       // leading empty entry
+    public void SubtitleLanguageList_EmptyEntries_Throws(string value)
+        => Assert.Throws<ArgumentException>(() =>
+            ConfigurationValidator.Validate(new PluginConfiguration { SubtitlePreferredLanguages = value }));
+
+    [Fact]
+    public void SubtitleLanguageList_EntryTooLong_Throws()
+        => Assert.Throws<ArgumentException>(() =>
+            ConfigurationValidator.Validate(new PluginConfiguration { SubtitlePreferredLanguages = "thisiswaytoolongforalanguagecode" }));
 }

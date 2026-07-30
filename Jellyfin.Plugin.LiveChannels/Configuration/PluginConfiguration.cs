@@ -67,6 +67,19 @@ public class PluginConfiguration : BasePluginConfiguration
     /// <summary>Gets or sets a value indicating whether burned-in subtitles are drawn in bold.</summary>
     public bool SubtitleBold { get; set; }
 
+    /// <summary>Gets or sets the comma-separated ordered list of preferred subtitle languages
+    /// as three-letter ISO codes (e.g. <c>"eng,deu,jap"</c>). Used globally when a channel
+    /// has no override. Empty means no language preference is applied.</summary>
+    public string SubtitlePreferredLanguages { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets a value indicating whether regular subtitles are ranked above
+    /// SDH (hearing-impaired) tracks when both are available in the same language. Off by default.</summary>
+    public bool PreferNonSdhSubtitles { get; set; }
+
+    /// <summary>Gets or sets whether external (sidecar) or internal (embedded) subtitle streams
+    /// are preferred when both are available. Soft tiebreaker only.</summary>
+    public SubtitleSourcePreference SubtitleSourcePreference { get; set; } = SubtitleSourcePreference.Auto;
+
     /// <summary>Gets or sets the directory each channel's live playlist and its rolling stream segments are written to while playing. Empty (the default) uses a <c>livechannels</c> folder inside Jellyfin's cache. Only a short rolling window of segments is kept on disk at a time, so this stays small regardless of how long the channel runs.</summary>
     public string StreamDirectory { get; set; } = string.Empty;
 

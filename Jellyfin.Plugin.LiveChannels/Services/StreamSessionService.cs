@@ -500,7 +500,15 @@ public class StreamSessionService
             return (false, -1);
         }
 
-        var subtitle = ChannelService.FindBurnInSubtitle(program, channel.SubtitleBurnIn);
+        var config = Plugin.Instance?.ReadConfiguration(c => c);
+        var preferredLanguages = !string.IsNullOrEmpty(channel.SubtitlePreferredLanguages)
+            ? channel.SubtitlePreferredLanguages
+            : config?.SubtitlePreferredLanguages ?? string.Empty;
+        var preferNonSdh = config?.PreferNonSdhSubtitles ?? false;
+        var sourcePreference = config?.SubtitleSourcePreference ?? SubtitleSourcePreference.Auto;
+
+        var subtitle = SubtitleSelector.FindBurnInSubtitle(program, channel.SubtitleBurnIn,
+            preferredLanguages, preferNonSdh, sourcePreference, _logger);
 
         // Burn the file Jellyfin extracted into its own subtitle cache, the same source its transcodes burn, not
         // the media file itself. The libass `subtitles` filter reads its source from the start to reach the
