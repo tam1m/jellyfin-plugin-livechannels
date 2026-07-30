@@ -37,6 +37,7 @@ export default function (view) {
     var studioPicker = null;   // channel-level studio typeahead picker (created once)
     var peoplePicker = null;   // channel-level person typeahead picker (created once)
     var audioLangPicker = null;// channel-level audio-language single-select typeahead (created once)
+    var prefLangPicker = null; // channel-level preferred subtitle languages multi-select (created once)
     var cultures = [];         // cached [{ key: ISO code, label: name }] for the language search
     var _bound = false;
 
@@ -329,6 +330,10 @@ export default function (view) {
             audioLangPicker = createSearchChips({ placeholder: 'Any language', search: searchLanguages, single: true });
             var audioMount = view.querySelector('.lc-audiolang-mount');
             if (audioMount) audioMount.appendChild(audioLangPicker.element);
+
+            prefLangPicker = createSearchChips({ placeholder: 'Search languages…', search: searchLanguages });
+            var prefMount = view.querySelector('.lc-pref-langs-mount');
+            if (prefMount) prefMount.appendChild(prefLangPicker.element);
         }
     }
 
@@ -1074,6 +1079,10 @@ export default function (view) {
         el('favorStrength').value = ch.FavorStrength || 'Moderate';
         updateFavorControls();
         el('subtitleBurnIn').value = ch.SubtitleBurnIn || 'Never';
+        if (prefLangPicker) prefLangPicker.setValue(
+            (ch.SubtitlePreferredLanguages || '').split(',').filter(function (c) { return c.trim(); })
+                .map(function (c) { return { key: c.trim(), label: cultureLabel(c.trim()) }; })
+        );
 
         currentEnabled = ch.Enabled !== false;
         setEnableVisual(currentEnabled);
@@ -1122,6 +1131,9 @@ export default function (view) {
         ch.FavorKind = el('favorKind').value;
         ch.FavorStrength = el('favorStrength').value;
         ch.SubtitleBurnIn = el('subtitleBurnIn').value;
+        ch.SubtitlePreferredLanguages = prefLangPicker
+            ? prefLangPicker.getValue().map(function (s) { return s.key; }).join(',')
+            : (ch.SubtitlePreferredLanguages || '');
         ch.Enabled = currentEnabled;
         // Sources are mutated live by the cards; keep the display names in sync.
         ch.Sources.forEach(function (s) {

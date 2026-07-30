@@ -11,14 +11,17 @@ export default function (view) {
 
     var Shared = null;
     var setTabs = null;
+    var createChipSelect = null;
     var _sharedPromise = import('/web/configurationpage?name=livechannels_jpkribs_shared.js').then(function (mod) {
         Shared = mod.createShared(view, PLUGIN_ID);
         setTabs = mod.setTabs;
+        createChipSelect = mod.createChipSelect;
     });
 
     var _bound = false;
     var cultures = [];         // cached [{ key: ISO code, label: name }] for the language search
     var langSelect = null;     // searchable single-select for the default subtitle language
+    var prefLangSelect = null; // multi-select for preferred subtitle languages (createChipSelect wrapper)
 
     function el(id) { return view.querySelector('#' + id); }
 
@@ -106,6 +109,24 @@ export default function (view) {
         }
     }
 
+    // Creates (once) a multi-select language picker using the shared base component and mounts it.
+    function ensurePrefLangSelect() {
+        if (!prefLangSelect) {
+            var picker = createChipSelect({
+                placeholder: 'Search languages…',
+                options: cultures.map(function (c) { return { value: c.key, label: c.label }; })
+            });
+            var mount = view.querySelector('.lc-pref-langs-mount');
+            if (mount) mount.appendChild(picker.element);
+            prefLangSelect = {
+                getValue: function () { return picker.getValue().join(','); },
+                setValue: function (csv) {
+                    picker.setValue(csv ? csv.split(',').map(function (s) { return s.trim(); }).filter(Boolean) : []);
+                }
+            };
+        }
+    }
+
     // Accepts a colour with or without the leading hash and stores it in the one form the server parses. Anything
     // that is not six hex digits is stored blank, which means "leave the subtitle's own colour alone".
     function normalizeColor(value) {
@@ -148,6 +169,10 @@ export default function (view) {
         el('subBold').checked = !!config.SubtitleBold;
         ensureLangSelect();
         langSelect.setValue(config.DefaultSubtitleLanguage || 'eng');
+        ensurePrefLangSelect();
+        prefLangSelect.setValue(config.SubtitlePreferredLanguages || '');
+        el('preferNonSdh').checked = !!config.PreferNonSdhSubtitles;
+        el('sourcePref').value = config.SubtitleSourcePreference || 'Auto';
         renderAcceleration();
     }
 
@@ -187,6 +212,9 @@ export default function (view) {
             fresh.StreamDirectory = (el('streamDirectory').value || '').trim();
             fresh.DisableHardwareAcceleration = el('disableHwa').checked;
             fresh.DefaultSubtitleLanguage = (langSelect ? langSelect.getValue() : '') || 'eng';
+            fresh.SubtitlePreferredLanguages = (prefLangSelect ? prefLangSelect.getValue() : '') || '';
+            fresh.PreferNonSdhSubtitles = el('preferNonSdh').checked;
+            fresh.SubtitleSourcePreference = el('sourcePref').value || 'Auto';
             var buffer = parseInt(el('startupBuffer').value, 10);
             fresh.StartupBufferSeconds = isNaN(buffer) ? 12 : Math.min(60, Math.max(4, buffer));
             fresh.SubtitleFont = (el('subFont').value || '').trim();

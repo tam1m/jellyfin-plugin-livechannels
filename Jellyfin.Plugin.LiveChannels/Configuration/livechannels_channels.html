@@ -197,13 +197,19 @@
                                         <option value="Never">Never</option>
                                         <option value="Forced">Forced only</option>
                                         <option value="Always">Always</option>
+                                        <option value="Default">Default (flags + language)</option>
                                     </select>
-                                    <div class="fieldDescription">Bakes subtitles into the picture for everyone. Forced only burns the forced track, or the full track when the audio is in another language, while Always burns them on everything.</div>
+                                    <div class="fieldDescription">Bakes subtitles into the picture for everyone. Default respects embedded metadata (forced, default) with language as tiebreaker. Always picks the best non-forced track; forced tracks are a fallback. Forced shows only forced tracks.</div>
                                 </div>
                                 <div class="selectContainer">
                                     <label class="selectLabel">Audio language</label>
                                     <div class="lc-audiolang-mount"></div>
                                     <div class="fieldDescription">Only include content whose default audio track is this language, like English only or Japanese only. Allow all languages keeps everything.</div>
+                                </div>
+                                <div class="selectContainer">
+                                    <label class="selectLabel">Preferred subtitle languages</label>
+                                    <div class="lc-pref-langs-mount"></div>
+                                    <div class="fieldDescription">Only subtitle tracks in these languages are used for this channel. Ordered by preference — the first match wins. Empty uses the global setting.</div>
                                 </div>
                                 <h3 class="jpk-subsection-title">Guide</h3>
                                 <div class="selectContainer">

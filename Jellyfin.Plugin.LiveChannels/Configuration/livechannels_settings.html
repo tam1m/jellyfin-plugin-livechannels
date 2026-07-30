@@ -88,7 +88,29 @@
                             <div class="selectContainer">
                                 <label class="selectLabel">Default language</label>
                                 <div class="lc-sublang-mount"></div>
-                                <div class="fieldDescription">Your native language. A channel set to Forced only burns in subtitles when its audio is in another language, so foreign content stays followable.</div>
+                                <div class="fieldDescription">Your native language. Superseded by Preferred languages below — the first preferred language is used as your native language instead. The old Forced-mode foreign-audio behavior is replaced by the new Default subtitle mode.</div>
+                            </div>
+
+                            <div class="selectContainer">
+                                <label class="selectLabel">Preferred subtitle languages</label>
+                                <div class="lc-pref-langs-mount"></div>
+                                <div class="fieldDescription">Only subtitle tracks in these languages are used. Ordered by preference — the first match wins. Empty allows all languages.</div>
+                            </div>
+
+                            <label class="emby-checkbox-label">
+                                <input type="checkbox" is="emby-checkbox" id="preferNonSdh" />
+                                <span class="checkboxLabel">Prefer non-SDH (non-hearing-impaired) subtitles</span>
+                            </label>
+                            <div class="fieldDescription" style="margin-top: 0;">When enabled, regular subtitles rank above SDH tracks in the same language.</div>
+
+                            <div class="selectContainer">
+                                <label class="selectLabel" for="sourcePref">Subtitle source preference</label>
+                                <select id="sourcePref" class="jpk-selector-dropdown">
+                                    <option value="Auto">Auto</option>
+                                    <option value="PreferExternal">Prefer external</option>
+                                    <option value="PreferInternal">Prefer internal</option>
+                                </select>
+                                <div class="fieldDescription">Whether sidecar files (like movie.en.srt) or embedded tracks are preferred when both exist.</div>
                             </div>
 
                             <div class="inputContainer">

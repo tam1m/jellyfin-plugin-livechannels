@@ -11,15 +11,19 @@ export default function (view) {
 
     var Shared = null;
     var setTabs = null;
+    var createChipSelect = null;
     var _sharedPromise = import('/web/configurationpage?name=livechannels_jpkribs_shared.js').then(function (mod) {
         Shared = mod.createShared(view, PLUGIN_ID);
         setTabs = mod.setTabs;
+        createChipSelect = mod.createChipSelect;
     });
 
     var _bound = false;
     var ratings = [];          // [{ Name, Value }]
     var ratingOptions = '';    // cached <option> html for the per-block rating selects
     var popularConfig = null;  // the PopularChannel object being edited (holds RatingBlocks)
+    var cultures = [];         // cached [{ key: ISO code, label: name }] for language search
+    var prefLangPicker = null; // multi-select for preferred subtitle languages
 
     function el(id) { return view.querySelector('#' + id); }
 
@@ -40,6 +44,29 @@ export default function (view) {
         }).catch(function () {
             ratingOptions = '';
         });
+    }
+
+    function loadLanguages() {
+        return ApiClient.getJSON(ApiClient.getUrl('Localization/Cultures')).then(function (list) {
+            var seen = {};
+            cultures = (list || []).filter(function (c) {
+                var code = c && c.ThreeLetterISOLanguageName;
+                if (!code || seen[code]) return false;
+                seen[code] = true; return true;
+            }).map(function (c) {
+                return { key: c.ThreeLetterISOLanguageName, label: c.DisplayName || c.Name };
+            }).sort(function (a, b) { return a.label.localeCompare(b.label); });
+        }).catch(function () { cultures = []; });
+    }
+
+    function cultureLabel(code) {
+        for (var i = 0; i < cultures.length; i++) { if (cultures[i].key === code) return cultures[i].label; }
+        return code;
+    }
+
+    function searchLanguages(term) {
+        var lower = (term || '').toLowerCase();
+        return (cultures || []).filter(function (c) { return c.label.toLowerCase().indexOf(lower) >= 0; }).slice(0, 25);
     }
 
     // MARK: Rating blocks (shared design with the channel editor)
@@ -138,6 +165,7 @@ export default function (view) {
         el('popularIcon').value = pc.LogoSymbol || '';
         el('popularShowName').checked = pc.LogoShowName !== false;
         el('popularSubtitle').value = pc.SubtitleBurnIn || 'Never';
+        if (prefLangPicker) prefLangPicker.setValue(pc.SubtitlePreferredLanguages || '');
         popularConfig = pc;
         pc.RatingBlocks = migrateRatingBlocks(pc);
         el('popularTransitionWindow').value = pc.TransitionWindowMinutes || '';
@@ -172,6 +200,7 @@ export default function (view) {
             pc.LogoSymbol = (el('popularIcon').value || '').trim();
             pc.LogoShowName = el('popularShowName').checked;
             pc.SubtitleBurnIn = el('popularSubtitle').value;
+            pc.SubtitlePreferredLanguages = prefLangPicker ? prefLangPicker.getValue() : (pc.SubtitlePreferredLanguages || '');
             // Blocks are mutated live on the cards; the transition window is read here. The blocks are authoritative,
             // so neutralise the legacy single-band fields to keep them from double-applying.
             pc.RatingBlocks = (popularConfig && popularConfig.RatingBlocks) || [];
@@ -210,6 +239,22 @@ export default function (view) {
             popularConfig.RatingBlocks.push(newRatingBlock());
             renderRatingBlocks();
         });
+
+        // Preferred subtitle languages multi-select — wraps the shared base component.
+        prefLangPicker = (function () {
+            var picker = createChipSelect({
+                placeholder: 'Search languages…',
+                options: cultures.map(function (c) { return { value: c.key, label: c.label }; })
+            });
+            var mount = view.querySelector('.lc-popular-pref-langs-mount');
+            if (mount) mount.appendChild(picker.element);
+            return {
+                getValue: function () { return picker.getValue().join(','); },
+                setValue: function (csv) {
+                    picker.setValue(csv ? csv.split(',').map(function (s) { return s.trim(); }).filter(Boolean) : []);
+                }
+            };
+        })();
     }
 
     view.addEventListener('viewshow', function () {
@@ -219,6 +264,8 @@ export default function (view) {
             Shared.initCollapsibles();
             // Populate the rating options before applying the saved values to them.
             loadRatings().then(function () {
+                return loadLanguages();
+            }).then(function () {
                 Shared.getConfig().then(loadPopular);
             });
         });
