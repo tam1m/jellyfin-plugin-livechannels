@@ -9,6 +9,14 @@
     "category": "LiveTV",
     "versions": [
       {
+        "version": "10.11.999.3",
+        "changelog": "- Add UI for subtitle preferences\n- Subtitle language preferences\n- Add Trailers content type toggle\n- Add Collection order loop mode\n- Update manifest for release v10.11.13.3\n- Fix comment wording in UpdateConfiguration method\n- Update version in build.yaml to 10.11.13.3\n- Update JPKribs.Jellyfin.Base package version\n- Update version to 10.11.13.4 and changelog\n- Auto-increment version to 10.11.13.3\n- Move settings documentation to SETTINGS.md\n- Update manifest for release v10.11.13.2\n- 10.11.13.2\n- Update manifest for release v10.11.13.1\n- 10.11.13.1",
+        "targetAbi": "10.11.10.0",
+        "sourceUrl": "https://github.com/tam1m/jellyfin-plugin-livechannels/releases/download/v10.11.999.3/jellyfin-plugin-livechannels-10.11.999.3.zip",
+        "checksum": "a6fd40ffa98abc029fb1d207158f5829",
+        "timestamp": "2026-08-01T11:18:02Z"
+      },
+      {
         "version": "10.11.999.2",
         "changelog": "- Add Trailers content type toggle\n- Add Collection order loop mode\n- Update manifest for release v10.11.13.0\n- 10.11.13.0",
         "targetAbi": "10.11.9.0",
